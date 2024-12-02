@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Email Verification</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+
+        h1, h2 {
+            color: #333;
+        }
+
+        form, .search-bar {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        form label, .search-bar label {
+            font-weight: bold;
+        }
+
+        form input[type="file"], .search-bar input[type="text"] {
+            margin: 10px 0;
+            padding: 5px;
+            width: calc(100% - 20px);
+            display: block;
+            font-size: 1rem;
+        }
+
+        form button, .search-bar button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+
+        form button:hover, .search-bar button:hover {
+            background-color: #0056b3;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            border-radius: 5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        table th, table td {
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #ccc;
+        }
+
+        table th {
+            background-color: #f2f2f2;
+        }
+
+        table td a {
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        table td a:hover {
+            text-decoration: underline;
+        }
+
+        table td button {
+            color: #dc3545;
+            background-color: transparent;
+            border: 1px solid #dc3545;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            border-radius: 3px;
+        }
+
+        table td button:hover {
+            background-color: #dc3545;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>Email Verification</h1>
+
+    <!-- Display Success Message -->
+    <div th:if="${message}" class="message">
+        <p th:text="${message}"></p>
+    </div>
+
+    <!-- File Upload Form -->
+    <form method="post" enctype="multipart/form-data" th:action="@{/email-verification/upload}">
+        <label for="file">Upload Excel File:</label>
+        <input type="file" id="file" name="file" required>
+        <button type="submit">Upload</button>
+    </form>
+
+    <!-- Search Bar -->
+    <div class="search-bar">
+        <form method="get" th:action="@{/email-verification/search}">
+            <label for="search">Search by File Name:</label>
+            <input type="text" id="search" name="query" placeholder="Enter file name..." required>
+            <button type="submit">Search</button>
+        </form>
+    </div>
+
+    <!-- Uploaded Files Section -->
+    <h2>Uploaded Files</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>File ID</th>
+                <th>File Name</th>
+                <th>Uploaded Time</th>
+                <th>Verified</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="file : ${uploadedFiles}">
+                <td th:text="${file.id}"></td>
+                <td th:text="${file.fileName}"></td>
+                <td th:text="${file.uploadTime}"></td>
+                <td th:text="${file.verified ? 'Yes' : 'No'}"></td>
+                <td>
+                    <a th:href="@{/email-verification/verify/{fileId}(fileId=${file.id})}">Verify</a> |
+                    <!-- Show download link only if file is verified -->
+                    <span th:if="${file.verified}">
+                        <a th:href="@{/email-verification/download/{fileId}(fileId=${file.id})}">Download Results</a>
+                    </span>
+                </td>
+            </tr>
+            <tr th:if="${uploadedFiles.empty}">
+                <td colspan="5" style="text-align: center;">No files uploaded yet.</td>
+            </tr>
+        </tbody>
+    </table>
+</body>
+</html>
