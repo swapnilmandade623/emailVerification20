@@ -1,4 +1,5 @@
 package com.tsl.model;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -16,15 +17,18 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Table(name = "email_verification_responses")
 public class EmailVerificationResponse {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name="Id")
     private Long id;
-
-    private int noOfValidEmails;  
-    private int noOfInvalidEmails;  
+    @Column(name="Total_Emails")
+    private Integer totalEmails;
+    @Column(name="Valid_Emails")
+    private Integer noOfValidEmails;  
+    @Column(name="InValid_Emails")
+    private Integer noOfInvalidEmails;
+    @Column(name="FileName") 
     private String fileName;  
-
     @OneToOne
     @JoinColumn(name = "uploaded_file_id", nullable = false)
     private UploadedFile uploadedFile;  

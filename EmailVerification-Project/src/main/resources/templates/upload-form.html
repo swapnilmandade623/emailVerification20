@@ -85,20 +85,54 @@
         }
 
         table td button {
-            color: #dc3545;
-            background-color: transparent;
-            border: 1px solid #dc3545;
             padding: 5px 10px;
             cursor: pointer;
             font-size: 1rem;
             border-radius: 3px;
         }
 
-        table td button:hover {
-            background-color: #dc3545;
+        /* Blue button for Verify and Download Results */
+        table td button.verify, table td button.download {
+            background-color: #007bff;
             color: white;
+            border: none;
+        }
+
+        table td button.verify:hover, table td button.download:hover {
+            background-color: #0056b3;
+        }
+
+        /* Red button for Delete */
+        table td button.delete {
+            color: white;
+            background-color: #dc3545;
+            border: none;
+        }
+
+        table td button.delete:hover {
+            background-color: #c82333;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-buttons button {
+            margin: 0;
         }
     </style>
+    <script>
+        function resetForm() {
+            document.getElementById("file").value = ""; // Clear the file input
+        }
+
+        function deleteFile(fileId) {
+            if (confirm("Are you sure you want to delete this file?")) {
+                window.location.href = "/email-verification/delete/" + fileId;
+            }
+        }
+    </script>
 </head>
 <body>
     <h1>Email Verification</h1>
@@ -112,19 +146,31 @@
     <form method="post" enctype="multipart/form-data" th:action="@{/email-verification/upload}">
         <label for="file">Upload Excel File:</label>
         <input type="file" id="file" name="file" required>
-        <button type="submit">Upload</button>
+        <div>
+            <button type="submit">Upload</button>
+            <button type="button" onclick="resetForm()">Reset</button>
+        </div>
     </form>
 
-    <!-- Search Bar -->
     <div class="search-bar">
-        <form method="get" th:action="@{/email-verification/search}">
-            <label for="search">Search by File Name:</label>
-            <input type="text" id="search" name="query" placeholder="Enter file name..." required>
+    <form method="get" th:action="@{/email-verification/search}">
+        <label for="search">Search by File Name:</label>
+        <input type="text" id="search" name="query" placeholder="Enter file name..." required>
+        <div style="display: flex; gap: 10px;">
             <button type="submit">Search</button>
-        </form>
-    </div>
+            <!-- Refresh Button -->
+            <button type="button" onclick="refreshSearch()">Refresh</button>
+        </div>
+    </form>
+</div>
 
-    <!-- Uploaded Files Section -->
+<script>
+    function refreshSearch() {
+        document.getElementById("search").value = ""; 
+        window.location.href = "/email-verification"; 
+    }
+</script>
+
     <h2>Uploaded Files</h2>
     <table>
         <thead>
@@ -143,11 +189,16 @@
                 <td th:text="${file.uploadTime}"></td>
                 <td th:text="${file.verified ? 'Yes' : 'No'}"></td>
                 <td>
-                    <a th:href="@{/email-verification/verify/{fileId}(fileId=${file.id})}">Verify</a> |
-                    <!-- Show download link only if file is verified -->
-                    <span th:if="${file.verified}">
-                        <a th:href="@{/email-verification/download/{fileId}(fileId=${file.id})}">Download Results</a>
-                    </span>
+                    <div class="action-buttons">
+                        <!-- Verify Button -->
+                        <button th:if="${!file.verified}" class="verify" th:onclick="'window.location.href=\'/email-verification/verify/' + ${file.id} + '\''">Verify</button>
+
+                        <!-- Download Results Button -->
+                        <button th:if="${file.verified}" class="download" th:onclick="'window.location.href=\'/email-verification/download/' + ${file.id} + '\''">Download Results</button>
+
+                        <!-- Delete Button -->
+                        <button class="delete" th:onclick="'deleteFile(' + ${file.id} + ')'">Delete</button>
+                    </div>
                 </td>
             </tr>
             <tr th:if="${uploadedFiles.empty}">

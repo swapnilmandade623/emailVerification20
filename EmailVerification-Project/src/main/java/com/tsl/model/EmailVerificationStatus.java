@@ -1,5 +1,6 @@
 package com.tsl.model;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -20,11 +21,12 @@ public class EmailVerificationStatus {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name="Id")
     private Long id;
-
+    @Column(name="Email")
     private String email;  
+    @Column(name="Status")
     private String status;  
-
     @ManyToOne
     @JoinColumn(name = "uploaded_file_id", nullable = false)
     private UploadedFile uploadedFile;  

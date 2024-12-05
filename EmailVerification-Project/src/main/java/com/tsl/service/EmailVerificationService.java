@@ -167,13 +167,15 @@
 //}
 
 package com.tsl.service;
-
 import com.tsl.model.EmailVerificationResponse;
 import com.tsl.model.EmailVerificationStatus;
 import com.tsl.model.UploadedFile;
 import com.tsl.repository.EmailVerificationResponseRepository;
 import com.tsl.repository.EmailVerificationStatusRepository;
 import com.tsl.repository.UploadedFileRepository;
+
+import jakarta.transaction.Transactional;
+
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -182,15 +184,15 @@ import org.xbill.DNS.Lookup;
 import org.xbill.DNS.MXRecord;
 import org.xbill.DNS.Record;
 import org.xbill.DNS.Type;
-
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.io.OutputStream;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
     @Service
@@ -214,13 +216,11 @@ import java.util.List;
             try (Workbook outputWorkbook = new XSSFWorkbook()) {
                 Sheet outputSheet = outputWorkbook.createSheet("Verification Results");
 
-                // Header row
                 Row headerRow = outputSheet.createRow(0);
                 headerRow.createCell(0).setCellValue("Email");
                 headerRow.createCell(1).setCellValue("Status");
                 headerRow.createCell(2).setCellValue("SMTP Response");
 
-                // Fill rows with email verification results
                 int rowIndex = 1;
                 for (EmailVerificationStatus status : statuses) {
                     Row outputRow = outputSheet.createRow(rowIndex++);
@@ -234,12 +234,12 @@ import java.util.List;
                 return outputStream.toByteArray();
             }
         }
-        public UploadedFile saveUploadedFile1(InputStream inputStream, String fileName) throws Exception {
-            try (Workbook inputWorkbook = WorkbookFactory.create(inputStream)) {
+             public UploadedFile saveUploadedFile1(InputStream inputStream, String fileName) throws Exception {
+                try (Workbook inputWorkbook = WorkbookFactory.create(inputStream)) {
                 UploadedFile uploadedFile = new UploadedFile();
                 uploadedFile.setFileName(fileName);
                 uploadedFile.setUploadTime(LocalDateTime.now());
-                uploadedFile.setVerified(false);  // Mark as not verified
+                uploadedFile.setVerified(false);  
                 uploadedFile = uploadedFileRepository.save(uploadedFile);
 
                 List<EmailVerificationStatus> statusList = new ArrayList<>();
@@ -255,14 +255,13 @@ import java.util.List;
                     status.setUploadedFile(uploadedFile);
                     statusList.add(status);
                 }
-
                 emailVerificationStatusRepository.saveAll(statusList);
-                return uploadedFile;
+                 return uploadedFile;
             }
-        }
+         }
 
-        public byte[] verifyEmails(Long fileId) throws Exception {
-            UploadedFile uploadedFile = uploadedFileRepository.findById(fileId)
+             public byte[] verifyEmails(Long fileId) throws Exception {
+             UploadedFile uploadedFile = uploadedFileRepository.findById(fileId)
                     .orElseThrow(() -> new RuntimeException("Uploaded file not found"));
 
             List<EmailVerificationStatus> statuses = emailVerificationStatusRepository.findByUploadedFile(uploadedFile);
@@ -303,8 +302,9 @@ import java.util.List;
 
                 uploadedFile.setVerified(true);
                 uploadedFileRepository.save(uploadedFile);
-
+                int TotalEmail=validCount+invalidCount;
                 EmailVerificationResponse response = new EmailVerificationResponse();
+                response.setTotalEmails(TotalEmail);
                 response.setNoOfValidEmails(validCount);
                 response.setNoOfInvalidEmails(invalidCount);
                 response.setFileName(uploadedFile.getFileName());
@@ -317,73 +317,93 @@ import java.util.List;
             }
         }
 
-        // Validate email format
         private boolean isValidFormat(String email) {
             String regex = "^[A-Za-z0-9+_.-]+@(.+)$";
-            return email.matches(regex);
+            boolean valid = email.matches(regex);
+            System.out.println("Email: " + email + ", Valid Format: " + valid);
+            return valid;
         }
 
-        // SMTP verification
-        private boolean verifyEmail(String email) {
-            if (email == null || !email.contains("@")) return false;
+        public boolean verifyEmail(String email) {
+            if (email == null || !email.contains("@")) {
+                System.err.println("Invalid email format: " + email);
+                return false;
+            }
 
             String domain = email.substring(email.indexOf("@") + 1);
             try {
                 List<String> mxRecords = getMXRecords(domain);
-                if (mxRecords == null || mxRecords.isEmpty()) return false;
+                if (mxRecords == null || mxRecords.isEmpty()) {
+                    System.err.println("No MX records found for domain: " + domain);
+                    return false;
+                }
 
                 for (String mxRecord : mxRecords) {
+                    System.out.println("Trying MX record: " + mxRecord);
                     if (checkSMTP(mxRecord, email)) {
+                        System.out.println("SMTP validation succeeded for email: " + email);
                         return true;
                     }
                 }
             } catch (Exception e) {
-                System.err.println("Error verifying email: " + e.getMessage());
+                System.err.println("Error during email verification: " + e.getMessage());
             }
+
+            System.err.println("SMTP validation failed for email: " + email);
             return false;
+        }
+        private boolean checkSMTP(String smtpHost, String email) {
+            try (Socket socket = new Socket()) {
+                socket.connect(new InetSocketAddress(smtpHost, 25), 10000); // Set 10-second timeout
+
+                try (InputStream reader = socket.getInputStream();
+                     OutputStream writer = socket.getOutputStream()) {
+
+                    // Send HELO command
+                    sendCommand(writer, "HELO example.com");
+                    if (!readResponse(reader).startsWith("250")) return false;
+
+                    // Send MAIL FROM command
+                    sendCommand(writer, "MAIL FROM:<test@example.com>");
+                    if (!readResponse(reader).startsWith("250")) return false;
+
+                    // Send RCPT TO command
+                    sendCommand(writer, "RCPT TO:<" + email + ">");
+                    String response = readResponse(reader);
+
+                    // Validate RCPT response
+                    return response.startsWith("250");
+                }
+                } catch (Exception e) {
+                System.err.println("SMTP validation error for email: " + email + " - " + e.getMessage());
+                return false;
+            }
         }
 
         private List<String> getMXRecords(String domain) {
             try {
                 Record[] records = new Lookup(domain, Type.MX).run();
-                if (records == null) return null;
+                if (records == null) {
+                    System.err.println("No MX records found for domain: " + domain);
+                    return Collections.emptyList();
+                }
 
                 List<String> mxRecords = new ArrayList<>();
                 for (Record record : records) {
                     mxRecords.add(((MXRecord) record).getTarget().toString());
                 }
+                System.out.println("Retrieved MX Records: " + mxRecords);
                 return mxRecords;
             } catch (Exception e) {
-                System.err.println("Error retrieving MX records: " + e.getMessage());
-                return null;
-            }
-        }
-
-        private boolean checkSMTP(String smtpHost, String email) {
-            try (Socket socket = new Socket(smtpHost, 25);
-                 InputStream reader = socket.getInputStream();
-                 OutputStream writer = socket.getOutputStream()) {
-
-                sendCommand(writer, "HELO " + InetAddress.getLocalHost().getHostName());
-                readResponse(reader);
-
-                sendCommand(writer, "MAIL FROM:<test@example.com>");
-                readResponse(reader);
-
-                sendCommand(writer, "RCPT TO:<" + email + ">");
-                String response = readResponse(reader);
-
-                return response.startsWith("250");
-
-            } catch (Exception e) {
-                System.err.println("SMTP connection failed: " + e.getMessage());
-                return false;
+                System.err.println("Failed to retrieve MX records for domain: " + domain + " - " + e.getMessage());
+                return Collections.emptyList();
             }
         }
 
         private void sendCommand(OutputStream writer, String command) throws Exception {
             writer.write((command + "\r\n").getBytes());
             writer.flush();
+            System.out.println("Sent command: " + command);
         }
 
         private String readResponse(InputStream reader) throws Exception {
@@ -393,17 +413,19 @@ import java.util.List;
                 response.append((char) ch);
                 if (response.toString().endsWith("\r\n")) break;
             }
-            return response.toString().trim();
+            String finalResponse = response.toString().trim();
+            System.out.println("SMTP Response: " + finalResponse);
+            return finalResponse;
         }
 
         public List<UploadedFile> getAllUploadedFiles() {
             return uploadedFileRepository.findAll();
         }
-		public void deleteFile(Long fileId) {
-			uploadedFileRepository.findById(fileId).get();
-			
-		}
-
+        @Transactional
+        public void deleteFile(Long fileId) {
+            emailVerificationStatusRepository.deleteByUploadedFileId(fileId);
+            uploadedFileRepository.deleteById(fileId);
+        }
 	
 	
     }

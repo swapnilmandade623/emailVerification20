@@ -41,10 +41,13 @@ public class UploadedFile {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name="Id")
     private Long id;
-
+    @Column(name="FileName")
     private String fileName;  
-    private LocalDateTime uploadTime;  
+    @Column(name="UploadTime")
+    private LocalDateTime uploadTime;
+    @Column(name="Verified")
     private boolean verified;  
 }
 
