@@ -359,11 +359,10 @@ import java.util.List;
                 try (InputStream reader = socket.getInputStream();
                      OutputStream writer = socket.getOutputStream()) {
 
-                    // Send HELO command
+               
                     sendCommand(writer, "HELO example.com");
                     if (!readResponse(reader).startsWith("250")) return false;
 
-                    // Send MAIL FROM command
                     sendCommand(writer, "MAIL FROM:<test@example.com>");
                     if (!readResponse(reader).startsWith("250")) return false;
 
