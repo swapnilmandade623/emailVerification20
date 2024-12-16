@@ -14,7 +14,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.util.List;
 
 @Controller
-//first_check
+//first_chek
+//second check
 @RequestMapping("/email-verification")
 public class EmailVerificationController {
 
