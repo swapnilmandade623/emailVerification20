@@ -39,7 +39,7 @@ public class EmailVerificationController {
         }
         return "redirect:/email-verification";
     }
-// its verifiy id
+
     @GetMapping("/verify/{fileId}")
     public String verifyFile(@PathVariable Long fileId, RedirectAttributes redirectAttributes) {
         try {
